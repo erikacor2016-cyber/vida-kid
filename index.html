@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vida Kid - Control Maestro</title>
+    <style>
+        /* ESTRUCTURA Y FONDO */
+        body { font-family: 'Times New Roman', Times, serif; background: #a98bee; margin: 0; padding: 10px; color: #000000; }
+        .hidden { display: none; }
+        header { text-align: center; margin-bottom: 15px; }
+        
+        /* LOGO Y TÍTULOS */
+        .logo-container { width: 220px; height: 220px; background: white; border-radius: 50%; margin: 0 auto 15px; overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(0,0,0,0.3); border: 6px solid white; }
+        .logo-container img { width: 90%; height: 85%; object-fit: cover; }
+        h1 { color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.4); font-size: 1.8rem; margin: 5px 0; }
+        
+        /* MONITOR DE ASISTENCIA */
+        .admin-monitor { background: #fff; padding: 12px; border-radius: 12px; margin-bottom: 15px; display: flex; justify-content: space-around; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-left: 5px solid #4f46e5; }
+        .monitor-label { font-size: 0.75rem; color: #000; font-weight: bold; text-transform: uppercase; }
+        .monitor-value { font-size: 1.4rem; color: #473fdb; font-weight: bold; margin-left: 5px; }
+        
+        /* TABLA Y CONTENEDORES */
+        .table-container { background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow-x: auto; color: #000; }
+        .date-selector { padding: 8px; border-radius: 8px; border: 2px solid #4f46e5; font-weight: bold; font-family: 'Times New Roman', serif; }
+        table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        th { background: #e6e9ff; color: #000; font-size: 0.85rem; padding: 10px; border: 1px solid #ccc; }
+        td { padding: 6px; border: 1px solid #eee; text-align: center; }
+        .fila-extra { background: #f8fafc; border-bottom: 2px solid #e2e8f0; }
+        .extra-grid { display: flex; flex-wrap: wrap; gap: 10px; padding: 8px; justify-content: center; align-items: center; }
+        
+        /* INPUTS */
+        input[type="text"], input[type="number"], input[type="date"], textarea { padding: 6px; border: 1px solid #999; border-radius: 5px; font-family: 'Times New Roman', serif; }
+        .total-celda { font-weight: bold; color: #4c81f5; font-size: 1.1rem; }
+        input:read-only, input[type="checkbox"]:disabled { background-color: #f9f9f9; border-color: transparent !important; color: #555; cursor: not-allowed; }
+        
+        /* BOTONES DE CONTROL (COLORES ACTUALIZADOS) */
+        .botones-control { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 20px; }
+        .btn { padding: 12px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Times New Roman', serif; transition: 0.3s; flex: 1; text-align: center; color: #2c3e50; }
+        
+        .btn-add { background: #9af09d; } /* Verde suave */
+        .btn-edit { background: #d19ef5; } /* Morado suave (antes azul rey) */
+        .btn-save { background: #51e5f0; font-size: 1rem; } /* Cian suave */
+        
+        .btn:hover { filter: brightness(0.9); }
+        .btn-delete { display: none; background: #f44336; color: white; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; }
+
+        /* TARJETAS DE NAVEGACIÓN */
+        .back { cursor: pointer; color: white; margin-bottom: 10px; display: inline-block; font-weight: bold; }
+        .cards { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
+        .card { background: white; padding: 25px; border-radius: 15px; cursor: pointer; min-width: 160px; text-align: center; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .asistencia-acumulada { background-color: #e8f5e9; border: 2px solid #2e7d32 !important; font-weight: bold; }
+        .input-label-small { font-size: 0.7rem; font-weight: bold; display: block; margin-bottom: 2px; }
+    </style>
+</head>
+<body>
+<script type="module">
+    // ... Tu lógica de Firebase, Edad Automática y Bloqueo se mantiene ...
+    // Solo asegúrate de que el botón de edición apunte al nuevo color si lo cambias dinámicamente:
+    window.toggleEdicion = () => {
+        modoEdicion = !modoEdicion;
+        const btn = document.getElementById('btnModoEdicion');
+        // ... lógica de inputs ...
+
+        if (modoEdicion) {
+            btn.innerText = "🔒 Bloquear Datos";
+            btn.style.background = "#b388eb"; // Un morado un poco más intenso al estar activo
+        } else {
+            btn.innerText = "🔓 Modo Editar Datos";
+            btn.style.background = "#d19ef5"; // Morado suave original
+        }
+    };
+</script>
+</body>
+</html>
+
+<section id="pagina-jornadas">
+    <header>
+        <div class="logo-container"><img src="vida kids.jpeg" alt="Logo"></div>
+        <h1>CCVN</h1>
+        <h3>Sugieme ( Mateo 9:9)</h3>
+        <h2>Lista de Vida Kids</h2>
+    </header>
+    <div class="cards">
+        <div class="card" onclick="irEdades('8:00 a 10:00')">Jornada 8:00 a 10:00</div>
+        <div class="card" onclick="irEdades('11:00 a 13:00')">Jornada 11:00 a 13:00</div>
+    </div>
+</section>
+
+<section id="pagina-edades" class="hidden">
+    <div class="back" onclick="nav('pagina-edades','pagina-jornadas')">← Regresar</div>
+    <h2 id="titulo-jornada" style="color: white; text-align: center;"></h2>
+    <div class="cards">
+        <div class="card" onclick="irTabla('3 a 5 años')">Salón 3 a 5 años</div>
+        <div class="card" onclick="irTabla('6 a 9 años')">Salón 6 a 9 años</div>
+    </div>
+</section>
+
+<section id="pagina-tabla" class="hidden">
+    <div class="back" onclick="nav('pagina-tabla','pagina-edades')">← Regresar</div>
+    <h2 id="titulo-clase" style="color: white; text-align: center;"></h2>
+    
+    <div class="admin-monitor">
+        <div>
+            <span class="monitor-label">Fecha:</span>
+            <input type="date" id="fechaClase" class="date-selector" onchange="window.cargarDatos()">
+        </div>
+        <div>
+            <span class="monitor-label">En Lista:</span>
+            <span id="contadorAsistencia" class="monitor-value">0</span>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <div style="text-align: center; margin-bottom: 15px;">
+            <label style="font-weight: bold;">PROFESORES:</label><br>
+            <input type="text" id="inputProfesor" style="width: 80%; text-align: center; border:none; border-bottom: 2px solid #4f46e5; font-weight: bold; font-size: 1.1rem;" readonly>
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Estudiante</th>
+                    <th>Asistencia</th>
+                    <th>Biblia</th>
+                    <th>Cuaderno</th>
+                    <th>Ofrenda</th>
+                    <th>Versículo a memorizar</th>
+                    <th>Corazón dispuesto</th>
+                    <th>Total de Puntos</th>
+                    <th>Eliminar</th>
+                </tr>
+            </thead>
+            <tbody id="tablaAlumnos"></tbody>
+        </table>
+        
+        <div style="margin-top: 15px;">
+            <label><b>Observaciones de la fecha:</b></label>
+            <textarea id="txtObservaciones" style="width: 98%; height: 50px; margin-top: 5px;"></textarea>
+        </div>
+
+        <div class="botones-control">
+            <button class="btn btn-add" onclick="agregarFila({}, true)">➕ Nuevo Estudiante</button>
+            <button id="btnModoEdicion" class="btn btn-edit" onclick="toggleEdicion()">🔓 Editar Datos</button>
+            <button class="btn btn-save" onclick="guardar()">💾 Guardar</button>
+        </div>
+    </div>
+</section>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "TU_API_KEY", 
+        authDomain: "vida-kids-ca4b8.firebaseapp.com",
+        projectId: "vida-kids-ca4b8",
+        storageBucket: "vida-kids-ca4b8.firebasestorage.app",
+        messagingSenderId: "287435029924",
+        appId: "1:287435029924:web:0a92a25e151f6187089531"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const profesoresPorGrupo = {
+        "8:00 a 10:00_3 a 5 años": "Laura y Sarita",
+        "8:00 a 10:00_6 a 9 años": "Charles y Erika",
+        "11:00 a 13:00_3 a 5 años": "Mayerly y Martha",
+        "11:00 a 13:00_6 a 9 años": "Claudia"
+    };
+
+    let jornada = "", clase = "", modoEdicion = false;
+    document.getElementById('fechaClase').valueAsDate = new Date();
+
+    window.nav = (o, m) => {
+        document.getElementById(o).classList.add('hidden');
+        document.getElementById(m).classList.remove('hidden');
+        if (m === 'pagina-jornadas' || m === 'pagina-edades') { modoEdicion = false; }
+    };
+
+    window.irEdades = (j) => {
+        jornada = j;
+        document.getElementById('titulo-jornada').innerText = "Jornada: " + j;
+        nav('pagina-jornadas', 'pagina-edades');
+    };
+
+    window.irTabla = (c) => {
+        clase = c;
+        const idClase = `${jornada}_${clase}`;
+        document.getElementById('inputProfesor').value = profesoresPorGrupo[idClase] || "";
+        document.getElementById('titulo-clase').innerText = `${clase} (${jornada})`;
+        nav('pagina-edades', 'pagina-tabla');
+        window.cargarDatos();
+    };
+
+    window.toggleEdicion = () => {
+        modoEdicion = !modoEdicion;
+        const btn = document.getElementById('btnModoEdicion');
+        const inputsBloqueados = document.querySelectorAll('.nombre, .acudiente, .tel, .cumple');
+        const checksBloqueados = document.querySelectorAll('.aut-foto, .aut-video, .aut-redes, .aut-parque');
+        const deleteBtns = document.querySelectorAll('.btn-delete');
+
+        if (modoEdicion) {
+            btn.innerText = "🔒 Bloquear Datos";
+            btn.style.background = "#4f46e5";
+            inputsBloqueados.forEach(i => i.readOnly = false);
+            checksBloqueados.forEach(c => c.disabled = false);
+            deleteBtns.forEach(b => b.style.display = "inline-block");
+        } else {
+            btn.innerText = "🔓 Editar Datos";
+            btn.style.background = "#ff9800";
+            inputsBloqueados.forEach(i => i.readOnly = true);
+            checksBloqueados.forEach(c => c.disabled = true);
+            deleteBtns.forEach(b => b.style.display = "none");
+        }
+    };
+
+    window.cargarDatos = async () => {
+        const fecha = document.getElementById('fechaClase').value;
+        const idClase = `${jornada}_${clase}`;
+        const idFecha = `${fecha}_${jornada}_${clase}`;
+        const [snapMaestra, snapFecha] = await Promise.all([
+            getDoc(doc(db, "maestras", idClase)),
+            getDoc(doc(db, "clases", idFecha))
+        ]);
+        const listaBase = snapMaestra.exists() ? snapMaestra.data().alumnos : [];
+        const dataFecha = snapFecha.exists() ? snapFecha.data() : { observaciones: "" };
+        const tabla = document.getElementById('tablaAlumnos');
+        tabla.innerHTML = "";
+        listaBase.forEach(alumno => agregarFila(alumno, false));
+        document.getElementById('txtObservaciones').value = dataFecha.observaciones || "";
+        actualizarContador();
+        modoEdicion = true; window.toggleEdicion();
+    };
+
+    window.calcularEdad = (fechaNacimiento) => {
+        if (!fechaNacimiento) return "";
+        const hoy = new Date();
+        const cumple = new Date(fechaNacimiento);
+        let edad = hoy.getFullYear() - cumple.getFullYear();
+        const m = hoy.getMonth() - cumple.getMonth();
+        if (m < 0 || (m === 0 && hoy.getDate() < cumple.getDate())) {
+            edad--;
+        }
+        return edad;
+    };
+
+    window.actualizarEdadFila = (el) => {
+        const filaExtra = el.closest('.fila-extra');
+        const edadInput = filaExtra.querySelector('.edad');
+        edadInput.value = window.calcularEdad(el.value);
+    };
+
+    window.agregarFila = (d = {}, esNuevo = false) => {
+        const tabla = document.getElementById('tablaAlumnos');
+        const pts = d.puntos || [0,0,0,0,0]; 
+        const totalPuntos = pts.reduce((a, b) => parseInt(a || 0) + parseInt(b || 0), 0);
+        const aut = d.autorizaciones || { fotos: false, video: false, redes: false, parque: false };
+        
+        const f1 = document.createElement('tr');
+        const isReadOnly = (modoEdicion || esNuevo) ? "" : "readonly";
+
+        f1.innerHTML = `
+            <td>${Math.floor(tabla.rows.length/2) + 1}</td>
+            <td><input type="text" class="nombre" value="${d.nombre || ''}" style="width:140px" ${isReadOnly}></td>
+            <td><input type="number" class="asistencia-acumulada" value="${d.asistencia || 0}" style="width:40px"></td>
+            ${pts.map(p => `<td><input type="number" class="punto" value="${p}" onchange="calc(this)" style="width:40px"></td>`).join('')}
+            <td class="total-celda">${totalPuntos}</td>
+            <td><button class="btn-delete" style="${(modoEdicion || esNuevo) ? 'display:inline-block' : ''}" onclick="eliminarFila(this)">✕</button></td>
+        `;
+        
+        const f2 = document.createElement('tr');
+        f2.className = "fila-extra";
+        f2.innerHTML = `<td colspan="10"><div class="extra-grid">
+            <div><span class="input-label-small">Edad</span><input type="number" class="edad" value="${d.edad || ''}" style="width:45px" readonly></div>
+            <div><span class="input-label-small">Cumple (Nacimiento)</span><input type="date" class="cumple" value="${d.cumple || ''}" onchange="actualizarEdadFila(this)" ${isReadOnly}></div>
+            <div><span class="input-label-small">Acudiente</span><input type="text" class="acudiente" value="${d.acudiente || ''}" style="width:110px" ${isReadOnly}></div>
+            <div><span class="input-label-small">Teléfono</span><input type="text" class="tel" value="${d.tel || ''}" style="width:90px" ${isReadOnly}></div>
+            <label><input type="checkbox" class="aut-foto" ${aut.fotos?'checked':''}> Fotos 📸</label>
+            <label><input type="checkbox" class="aut-video" ${aut.video?'checked':''}> Videos 🎥</label>
+            <label><input type="checkbox" class="aut-redes" ${aut.redes?'checked':''}> Redes 🌐</label>
+            <label><input type="checkbox" class="aut-parque" ${aut.parque?'checked':''}> Parque 🌳</label>
+        </div></td>`;
+
+        if (!modoEdicion && !esNuevo) {
+            f2.querySelectorAll('input[type="checkbox"]').forEach(c => c.disabled = true);
+        }
+
+        tabla.appendChild(f1);
+        tabla.appendChild(f2);
+    };
+
+    window.eliminarFila = (btn) => {
+        const filaNombre = btn.closest('tr').querySelector('.nombre').value || "este estudiante";
+        if(confirm(`¿Estás seguro de que vas a eliminar al estudiante: ${filaNombre}?`)) {
+            btn.closest('tr').nextElementSibling.remove();
+            btn.closest('tr').remove();
+        }
+    };
+
+    window.calc = (el) => {
+        const row = el.closest('tr');
+        const suma = Array.from(row.querySelectorAll('.punto')).reduce((a, p) => a + (parseInt(p.value) || 0), 0);
+        row.querySelector('.total-celda').innerText = suma;
+    };
+
+    function actualizarContador() {
+        document.getElementById('contadorAsistencia').innerText = document.querySelectorAll('#tablaAlumnos tr:nth-child(odd)').length;
+    }
+
+    window.guardar = async () => {
+        const fecha = document.getElementById('fechaClase').value;
+        const idClase = `${jornada}_${clase}`;
+        const idFecha = `${fecha}_${jornada}_${clase}`;
+        const fPuntos = document.querySelectorAll('#tablaAlumnos tr:nth-child(odd)');
+        const fExtra = document.querySelectorAll('#tablaAlumnos tr:nth-child(even)');
+        
+        const alumnosData = Array.from(fPuntos).map((r, i) => ({
+            nombre: r.querySelector('.nombre').value,
+            asistencia: parseInt(r.querySelector('.asistencia-acumulada').value) || 0,
+            puntos: Array.from(r.querySelectorAll('.punto')).map(p => p.value),
+            edad: fExtra[i].querySelector('.edad').value,
+            cumple: fExtra[i].querySelector('.cumple').value,
+            acudiente: fExtra[i].querySelector('.acudiente').value,
+            tel: fExtra[i].querySelector('.tel').value,
+            autorizaciones: {
+                fotos: fExtra[i].querySelector('.aut-foto').checked,
+                video: fExtra[i].querySelector('.aut-video').checked,
+                redes: fExtra[i].querySelector('.aut-redes').checked,
+                parque: fExtra[i].querySelector('.aut-parque').checked
+            }
+        }));
+
+        await setDoc(doc(db, "maestras", idClase), { alumnos: alumnosData });
+        await setDoc(doc(db, "clases", idFecha), { observaciones: document.getElementById('txtObservaciones').value, fecha });
+        
+        alert("✅ Se guardo exitosamente.");
+        actualizarContador();
+        if(modoEdicion) window.toggleEdicion();
+        else window.cargarDatos(); 
+    };
+</script>
+</body>
+</html>
