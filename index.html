@@ -12,7 +12,7 @@
         
         /* LOGO Y TÍTULOS */
         .logo-container { width: 220px; height: 220px; background: white; border-radius: 50%; margin: 0 auto 15px; overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(0,0,0,0.3); border: 6px solid white; }
-        .logo-container img { width: 90%; height: 85%; object-fit: cover; }
+        .logo-container img { width: 100%; height: 100%; object-fit: cover; }
         h1 { color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.4); font-size: 1.8rem; margin: 5px 0; }
         
         /* MONITOR DE ASISTENCIA */
@@ -34,13 +34,13 @@
         .total-celda { font-weight: bold; color: #4c81f5; font-size: 1.1rem; }
         input:read-only, input[type="checkbox"]:disabled { background-color: #f9f9f9; border-color: transparent !important; color: #555; cursor: not-allowed; }
         
-        /* BOTONES DE CONTROL (COLORES ACTUALIZADOS) */
+        /* BOTONES DE CONTROL */
         .botones-control { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 20px; }
         .btn { padding: 12px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Times New Roman', serif; transition: 0.3s; flex: 1; text-align: center; color: #2c3e50; }
         
-        .btn-add { background: #9af09d; } /* Verde suave */
-        .btn-edit { background: #d19ef5; } /* Morado suave (antes azul rey) */
-        .btn-save { background: #51e5f0; font-size: 1rem; } /* Cian suave */
+        .btn-add { background: #9af09d; }
+        .btn-edit { background: #d19ef5; }
+        .btn-save { background: #51e5f0; font-size: 1rem; }
         
         .btn:hover { filter: brightness(0.9); }
         .btn-delete { display: none; background: #f44336; color: white; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; }
@@ -51,28 +51,13 @@
         .card { background: white; padding: 25px; border-radius: 15px; cursor: pointer; min-width: 160px; text-align: center; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
         .asistencia-acumulada { background-color: #e8f5e9; border: 2px solid #2e7d32 !important; font-weight: bold; }
         .input-label-small { font-size: 0.7rem; font-weight: bold; display: block; margin-bottom: 2px; }
+
+        /* ESTILO AVISO CUMPLEAÑOS */
+        #contenedor-cumpleanos { margin-bottom: 15px; display: none; }
+        .alerta-cumple { background: #fff3cd; border: 2px dashed #ff9800; border-radius: 12px; padding: 12px; color: #856404; font-family: 'Times New Roman', serif; }
     </style>
 </head>
 <body>
-<script type="module">
-    // ... Tu lógica de Firebase, Edad Automática y Bloqueo se mantiene ...
-    // Solo asegúrate de que el botón de edición apunte al nuevo color si lo cambias dinámicamente:
-    window.toggleEdicion = () => {
-        modoEdicion = !modoEdicion;
-        const btn = document.getElementById('btnModoEdicion');
-        // ... lógica de inputs ...
-
-        if (modoEdicion) {
-            btn.innerText = "🔒 Bloquear Datos";
-            btn.style.background = "#b388eb"; // Un morado un poco más intenso al estar activo
-        } else {
-            btn.innerText = "🔓 Modo Editar Datos";
-            btn.style.background = "#d19ef5"; // Morado suave original
-        }
-    };
-</script>
-</body>
-</html>
 
 <section id="pagina-jornadas">
     <header>
@@ -108,6 +93,13 @@
         <div>
             <span class="monitor-label">En Lista:</span>
             <span id="contadorAsistencia" class="monitor-value">0</span>
+        </div>
+    </div>
+
+    <div id="contenedor-cumpleanos">
+        <div class="alerta-cumple">
+            <h4 style="margin: 0 0 5px 0;">🎉 Avisos de Cumpleaños:</h4>
+            <ul id="lista-cumples" style="margin: 0; padding-left: 20px;"></ul>
         </div>
     </div>
 
@@ -172,7 +164,13 @@
     };
 
     let jornada = "", clase = "", modoEdicion = false;
-    document.getElementById('fechaClase').valueAsDate = new Date();
+    
+    // --- CORRECCIÓN DE FECHA (PUNTO 1) ---
+    const hoyLocal = new Date();
+    const yyyy = hoyLocal.getFullYear();
+    const mm = String(hoyLocal.getMonth() + 1).padStart(2, '0');
+    const dd = String(hoyLocal.getDate()).padStart(2, '0');
+    document.getElementById('fechaClase').value = `${yyyy}-${mm}-${dd}`;
 
     window.nav = (o, m) => {
         document.getElementById(o).classList.add('hidden');
@@ -210,7 +208,7 @@
             deleteBtns.forEach(b => b.style.display = "inline-block");
         } else {
             btn.innerText = "🔓 Editar Datos";
-            btn.style.background = "#ff9800";
+            btn.style.background = "#d19ef5";
             inputsBloqueados.forEach(i => i.readOnly = true);
             checksBloqueados.forEach(c => c.disabled = true);
             deleteBtns.forEach(b => b.style.display = "none");
@@ -232,16 +230,17 @@
         listaBase.forEach(alumno => agregarFila(alumno, false));
         document.getElementById('txtObservaciones').value = dataFecha.observaciones || "";
         actualizarContador();
+        window.verificarCumpleanos();
         modoEdicion = true; window.toggleEdicion();
     };
 
     window.calcularEdad = (fechaNacimiento) => {
         if (!fechaNacimiento) return "";
-        const hoy = new Date();
-        const cumple = new Date(fechaNacimiento);
-        let edad = hoy.getFullYear() - cumple.getFullYear();
-        const m = hoy.getMonth() - cumple.getMonth();
-        if (m < 0 || (m === 0 && hoy.getDate() < cumple.getDate())) {
+        const hoyDate = new Date();
+        const cumpleDate = new Date(fechaNacimiento + "T00:00:00");
+        let edad = hoyDate.getFullYear() - cumpleDate.getFullYear();
+        const m = hoyDate.getMonth() - cumpleDate.getMonth();
+        if (m < 0 || (m === 0 && hoyDate.getDate() < cumpleDate.getDate())) {
             edad--;
         }
         return edad;
@@ -310,6 +309,56 @@
         document.getElementById('contadorAsistencia').innerText = document.querySelectorAll('#tablaAlumnos tr:nth-child(odd)').length;
     }
 
+    // --- MEJORA CUMPLEAÑOS SEMANAL (PUNTO 2) ---
+    window.verificarCumpleanos = () => {
+        const fSel = new Date(document.getElementById('fechaClase').value + "T00:00:00");
+        const fPuntos = document.querySelectorAll('#tablaAlumnos tr:nth-child(odd)');
+        const fExtra = document.querySelectorAll('#tablaAlumnos tr:nth-child(even)');
+        const listaUI = document.getElementById('lista-cumples');
+        const contenedor = document.getElementById('contenedor-cumpleanos');
+        
+        listaUI.innerHTML = "";
+        let hayAvisos = false;
+
+        fPuntos.forEach((r, i) => {
+            const nombre = r.querySelector('.nombre').value;
+            const nacStr = fExtra[i].querySelector('.cumple').value;
+            
+            if (nombre && nacStr) {
+                const nac = new Date(nacStr + "T00:00:00");
+                const dActual = fSel.getDate(), mActual = fSel.getMonth();
+                const dCumple = nac.getDate(), mCumple = nac.getMonth();
+
+                // 1. ¿Es Hoy?
+                if (dActual === dCumple && mActual === mCumple) {
+                    agregarAviso(`🎂 ¡HOY es el cumpleaños de ${nombre}!`);
+                    hayAvisos = true;
+                } 
+
+                // 2. Resumen Semanal (Si es Domingo)
+                if (fSel.getDay() === 0) {
+                    // Revisamos de Lunes (hace 6 días) a Sábado (hace 1 día)
+                    for (let j = 1; j <= 6; j++) {
+                        let diaPasado = new Date(fSel); 
+                        diaPasado.setDate(fSel.getDate() - j);
+                        if (diaPasado.getDate() === dCumple && diaPasado.getMonth() === mCumple) {
+                            const opciones = { weekday: 'long' };
+                            const nombreDia = diaPasado.toLocaleDateString('es-ES', opciones);
+                            agregarAviso(`🎁 ${nombre} cumplió años el pasado ${nombreDia}.`);
+                            hayAvisos = true;
+                        }
+                    }
+                }
+            }
+        });
+        contenedor.style.display = hayAvisos ? 'block' : 'none';
+    };
+
+    function agregarAviso(t) {
+        const li = document.createElement('li'); li.innerText = t;
+        document.getElementById('lista-cumples').appendChild(li);
+    }
+
     window.guardar = async () => {
         const fecha = document.getElementById('fechaClase').value;
         const idClase = `${jornada}_${clase}`;
@@ -336,8 +385,9 @@
         await setDoc(doc(db, "maestras", idClase), { alumnos: alumnosData });
         await setDoc(doc(db, "clases", idFecha), { observaciones: document.getElementById('txtObservaciones').value, fecha });
         
-        alert("✅ Se guardo exitosamente.");
+        alert("✅ Se guardó exitosamente.");
         actualizarContador();
+        window.verificarCumpleanos();
         if(modoEdicion) window.toggleEdicion();
         else window.cargarDatos(); 
     };
