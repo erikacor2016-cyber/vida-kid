@@ -14,20 +14,16 @@
         .logo-container img { width: 100%; height: 100%; object-fit: cover; }
         h1 { color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.4); font-size: 1.8rem; margin: 5px 0; }
         
-        /* SEMÁFORO Y ALERTAS */
-        .semaforo { width: 18px; height: 18px; border-radius: 50%; display: inline-block; vertical-align: middle; margin-right: 8px; border: 1px solid #999; cursor: pointer; }
-        .fallas-ok { background: #e0e0e0; }
-        .fallas-3 { background: #ffeb3b; box-shadow: 0 0 8px #fbc02d; }
-        .fallas-6 { background: #f44336; box-shadow: 0 0 8px #d32f2f; }
-        .msg-alerta { display: block; font-size: 0.65rem; color: #666; font-weight: bold; margin-top: 3px; line-height: 1.1; }
-
         .admin-monitor { background: #fff; padding: 12px; border-radius: 12px; margin-bottom: 15px; display: flex; justify-content: space-around; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-left: 5px solid #4f46e5; }
         .monitor-label { font-size: 0.75rem; color: #000; font-weight: bold; text-transform: uppercase; }
         .monitor-value { font-size: 1.4rem; color: #473fdb; font-weight: bold; margin-left: 5px; }
         
         .table-container { background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow-x: auto; color: #000; }
         .date-selector { padding: 8px; border-radius: 8px; border: 2px solid #4f46e5; font-weight: bold; font-family: 'Times New Roman', serif; }
-        table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        
+        /* Ajuste de ancho para la nueva columna */
+        table { width: 100%; border-collapse: collapse; min-width: 1150px; } 
+        
         th { background: #e6e9ff; color: #000; font-size: 0.85rem; padding: 10px; border: 1px solid #ccc; }
         td { padding: 8px; border: 1px solid #eee; text-align: center; }
         .fila-extra { background: #f8fafc; border-bottom: 2px solid #e2e8f0; }
@@ -41,9 +37,8 @@
         .botones-control { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 20px; }
         .btn { padding: 12px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Times New Roman', serif; transition: 0.3s; flex: 1; text-align: center; color: #2c3e50; }
         .btn-add { background: #9af09d; }
-        .btn-edit { background: #d19ef5; }
+        .btn-edit { background: #d19ef5; } 
         .btn-save { background: #51e5f0; font-size: 1rem; }
-        .btn:hover { filter: brightness(0.9); }
         .btn-delete { display: none; background: #f44336; color: white; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; }
 
         .back { cursor: pointer; color: white; margin-bottom: 10px; display: inline-block; font-weight: bold; }
@@ -62,7 +57,7 @@
     <header>
         <div class="logo-container"><img src="vida kids.jpeg" alt="Logo"></div>
         <h1>CCVN</h1>
-        <h3>Sugieme ( Mateo 9:9)</h3>
+        <h3>Sigueme (Mateo 9:9)</h3>
         <h2>Lista de Vida Kids</h2>
     </header>
     <div class="cards">
@@ -113,12 +108,13 @@
                 <tr>
                     <th>#</th>
                     <th>Estudiante</th>
-                    <th>Asistencia</th>
+                    <th>Asist.</th>
                     <th>Biblia</th>
                     <th>Cuaderno</th>
                     <th>Ofrenda</th>
-                    <th>Versículo a memorizar</th>
-                    <th>Corazón dispuesto</th>
+                    <th>Versículo</th>
+                    <th>Corazón</th>
+                    <th>Devocional Familia</th>
                     <th>Total</th>
                     <th>Eliminar</th>
                 </tr>
@@ -164,8 +160,7 @@
 
     let jornada = "", clase = "", modoEdicion = false;
     
-    const hoyLocal = new Date();
-    document.getElementById('fechaClase').value = hoyLocal.toISOString().split('T')[0];
+    document.getElementById('fechaClase').value = new Date().toISOString().split('T')[0];
 
     window.nav = (o, m) => {
         document.getElementById(o).classList.add('hidden');
@@ -191,12 +186,11 @@
     window.toggleEdicion = () => {
         modoEdicion = !modoEdicion;
         const btn = document.getElementById('btnModoEdicion');
-        const inputs = document.querySelectorAll('.nombre, .acudiente, .tel, .cumple');
+        const inputs = document.querySelectorAll('.nombre, .acudiente, .tel, .cumple, .asistencia-acumulada');
         const checks = document.querySelectorAll('.aut-foto, .aut-video, .aut-redes, .aut-parque');
         const deletes = document.querySelectorAll('.btn-delete');
 
         btn.innerText = modoEdicion ? "🔒 Bloquear Datos" : "🔓 Editar Datos";
-        btn.style.background = modoEdicion ? "#4f46e5" : "#d19ef5";
         inputs.forEach(i => i.readOnly = !modoEdicion);
         checks.forEach(c => c.disabled = !modoEdicion);
         deletes.forEach(b => b.style.display = modoEdicion ? "inline-block" : "none");
@@ -212,7 +206,6 @@
         actualizarContador();
         window.verificarCumpleanos();
         
-        // Al cargar, siempre empezamos bloqueados para proteger datos
         modoEdicion = true; 
         window.toggleEdicion();
     };
@@ -233,54 +226,38 @@
         edadInput.value = window.calcularEdad(el.value);
     };
 
-    window.gestionarFallas = (nombre, el) => {
-        const menu = "Elija el motivo para resetear semáforo:\n1. Enfermo\n2. De viaje\n3. Cambio de iglesia\n4. No quiere subir";
-        const r = prompt(`Gestión para ${nombre}\n${menu}`);
-        if (r) {
-            el.className = "semaforo fallas-ok";
-            el.dataset.fallas = 0;
-            const msg = el.parentElement.querySelector('.msg-alerta');
-            if (msg) msg.remove();
-            alert("Motivo registrado. El semáforo se reiniciará al guardar.");
-        }
-    };
-
     window.agregarFila = (d = {}, esNuevo = false) => {
         const tabla = document.getElementById('tablaAlumnos');
-        const pts = d.puntos || [0,0,0,0,0]; 
-        const totalPuntos = pts.reduce((a, b) => parseInt(a || 0) + parseInt(b || 0), 0);
-        const fallas = d.fallas || 0;
         
+        // RECUPERACIÓN DE PUNTOS:
+        // Si d.puntos tiene 5 valores (viejo formato), le agregamos un 0 al final.
+        // Si tiene 6 (nuevo formato), los deja igual.
+        let pts = d.puntos ? [...d.puntos] : [0,0,0,0,0,0];
+        if (pts.length === 5) {
+            pts.push(0); 
+        }
+
+        const totalPuntos = pts.reduce((a, b) => parseInt(a || 0) + parseInt(b || 0), 0);
         const isReadOnly = (modoEdicion || esNuevo) ? "" : "readonly";
         const isDisabled = (modoEdicion || esNuevo) ? "" : "disabled";
-        
-        let claseSem = "fallas-ok";
-        let msg = "";
-        if (fallas >= 3 && fallas < 6) {
-            claseSem = "fallas-3";
-            msg = `<span class="msg-alerta">Hola profe, ${d.nombre || ''} no ha venido. Sería bueno llamarlo.</span>`;
-        } else if (fallas >= 6) {
-            claseSem = "fallas-6";
-            msg = `<span class="msg-alerta">Ojo profe, recuerda que es importante llamar a ${d.nombre || ''}.</span>`;
-        }
 
         const f1 = document.createElement('tr');
         f1.innerHTML = `
             <td>${Math.floor(tabla.rows.length/2) + 1}</td>
             <td style="text-align: left;">
-                <div class="semaforo ${claseSem}" data-fallas="${fallas}" onclick="gestionarFallas('${d.nombre}', this)"></div>
                 <input type="text" class="nombre" value="${d.nombre || ''}" style="width:130px" ${isReadOnly}>
-                ${msg}
             </td>
-            <td><input type="number" class="asistencia-acumulada" value="${d.asistencia || 0}" style="width:40px"></td>
+            <td><input type="number" class="asistencia-acumulada" value="${d.asistencia || 0}" style="width:35px" ${isReadOnly}></td>
+            
             ${pts.map(p => `<td><input type="number" class="punto" value="${p}" onchange="calc(this)" style="width:35px"></td>`).join('')}
+            
             <td class="total-celda">${totalPuntos}</td>
             <td><button class="btn-delete" style="${esNuevo || modoEdicion ? 'display:inline-block' : 'none'}" onclick="eliminarFila(this)">✕</button></td>
         `;
         
         const f2 = document.createElement('tr');
         f2.className = "fila-extra";
-        f2.innerHTML = `<td colspan="10"><div class="extra-grid">
+        f2.innerHTML = `<td colspan="12"><div class="extra-grid">
             <div><span class="input-label-small">Edad</span><input type="number" class="edad" value="${window.calcularEdad(d.cumple) || ''}" style="width:45px" readonly></div>
             <div><span class="input-label-small">Cumple</span><input type="date" class="cumple" value="${d.cumple || ''}" style="width:115px" onchange="actualizarEdadFila(this)" ${isReadOnly}></div>
             <div><span class="input-label-small">Acudiente</span><input type="text" class="acudiente" value="${d.acudiente || ''}" style="width:100px" ${isReadOnly}></div>
@@ -289,23 +266,12 @@
             </div>
             <label><input type="checkbox" class="aut-foto" ${d.autorizaciones?.fotos?'checked':''} ${isDisabled}> Fotos 📸</label>
             <label><input type="checkbox" class="aut-video" ${d.autorizaciones?.video?'checked':''} ${isDisabled}> Videos 🎥</label>
-            <label><input type="checkbox" class="aut-redes" ${d.autorizaciones?.redes?'checked':''} ${isDisabled}> Redes sociales 🌐</label>
-            <label><input type="checkbox" class="aut-parque" ${d.autorizaciones?.parque?'checked':''} ${isDisabled}>  Parque 🌳</label>
+            <label><input type="checkbox" class="aut-redes" ${d.autorizaciones?.redes?'checked':''} ${isDisabled}> Redes 🌐</label>
+            <label><input type="checkbox" class="aut-parque" ${d.autorizaciones?.parque?'checked':''} ${isDisabled}> Parque 🌳</label>
         </div></td>`;
 
         tabla.appendChild(f1);
         tabla.appendChild(f2);
-        // Nota: El conteo visual no cambia hasta guardar, según instrucción.
-    };
-
-    window.eliminarFila = (btn) => {
-        const nombreEstudiante = btn.closest('tr').querySelector('.nombre').value || "el estudiante";
-        if(confirm(`¿Estás seguro que deseas eliminar a ${nombreEstudiante}?`)) {
-            btn.closest('tr').nextElementSibling.remove();
-            btn.closest('tr').remove();
-            actualizarContador();
-            alert(`Se eliminó el estudiante ${nombreEstudiante} con éxito`);
-        }
     };
 
     window.calc = (el) => {
@@ -317,6 +283,43 @@
     function actualizarContador() {
         document.getElementById('contadorAsistencia').innerText = document.querySelectorAll('#tablaAlumnos tr:nth-child(odd)').length;
     }
+
+    window.guardar = async () => {
+        const idClase = `${jornada}_${clase}`;
+        const fPuntos = document.querySelectorAll('#tablaAlumnos tr:nth-child(odd)');
+        const fExtra = document.querySelectorAll('#tablaAlumnos tr:nth-child(even)');
+        
+        const alumnosData = Array.from(fPuntos).map((r, i) => {
+            return {
+                nombre: r.querySelector('.nombre').value,
+                asistencia: parseInt(r.querySelector('.asistencia-acumulada').value) || 0,
+                puntos: Array.from(r.querySelectorAll('.punto')).map(p => p.value),
+                cumple: fExtra[i].querySelector('.cumple').value,
+                edad: fExtra[i].querySelector('.edad').value,
+                acudiente: fExtra[i].querySelector('.acudiente').value,
+                tel: fExtra[i].querySelector('.tel').value,
+                autorizaciones: {
+                    fotos: fExtra[i].querySelector('.aut-foto').checked,
+                    video: fExtra[i].querySelector('.aut-video').checked,
+                    redes: fExtra[i].querySelector('.aut-redes').checked,
+                    parque: fExtra[i].querySelector('.aut-parque').checked
+                }
+            };
+        });
+
+        await setDoc(doc(db, "maestras", idClase), { alumnos: alumnosData });
+        alert(`✅ Datos guardados con éxito.`);
+        window.cargarDatos(); 
+    };
+
+    window.eliminarFila = (btn) => {
+        const nombreEstudiante = btn.closest('tr').querySelector('.nombre').value || "el estudiante";
+        if(confirm(`¿Eliminar a ${nombreEstudiante}?`)) {
+            btn.closest('tr').nextElementSibling.remove();
+            btn.closest('tr').remove();
+            actualizarContador();
+        }
+    };
 
     window.verificarCumpleanos = () => {
         const fSel = new Date(document.getElementById('fechaClase').value + "T00:00:00");
@@ -336,51 +339,6 @@
             }
         });
         document.getElementById('contenedor-cumpleanos').style.display = hay ? 'block' : 'none';
-    };
-
-    window.guardar = async () => {
-        const idClase = `${jornada}_${clase}`;
-        const fPuntos = document.querySelectorAll('#tablaAlumnos tr:nth-child(odd)');
-        const fExtra = document.querySelectorAll('#tablaAlumnos tr:nth-child(even)');
-        
-        let ultimoNombreModificado = "";
-
-        const alumnosData = Array.from(fPuntos).map((r, i) => {
-            const nombreActual = r.querySelector('.nombre').value;
-            ultimoNombreModificado = nombreActual; // Capturamos para el mensaje final
-            
-            const ptsHoy = parseInt(r.querySelector('.total-celda').innerText);
-            let fallasActuales = parseInt(r.querySelector('.semaforo').dataset.fallas) || 0;
-            if (ptsHoy === 0) fallasActuales++; else fallasActuales = 0;
-
-            return {
-                nombre: nombreActual,
-                asistencia: parseInt(r.querySelector('.asistencia-acumulada').value) || 0,
-                fallas: fallasActuales,
-                puntos: Array.from(r.querySelectorAll('.punto')).map(p => p.value),
-                cumple: fExtra[i].querySelector('.cumple').value,
-                edad: fExtra[i].querySelector('.edad').value,
-                acudiente: fExtra[i].querySelector('.acudiente').value,
-                tel: fExtra[i].querySelector('.tel').value,
-                autorizaciones: {
-                    fotos: fExtra[i].querySelector('.aut-foto').checked,
-                    video: fExtra[i].querySelector('.aut-video').checked,
-                    redes: fExtra[i].querySelector('.aut-redes').checked,
-                    parque: fExtra[i].querySelector('.aut-parque').checked
-                }
-            };
-        });
-
-        await setDoc(doc(db, "maestras", idClase), { alumnos: alumnosData });
-        
-        // Mensajes personalizados con el nombre del estudiante
-        if (modoEdicion) {
-            alert(`✅ El estudiante ${ultimoNombreModificado || "seleccionado"} y sus datos fueron corregidos con éxito`);
-        } else {
-            alert(`✅ El estudiante ${ultimoNombreModificado || "nuevo"} fue guardado con éxito.`);
-        }
-        
-        window.cargarDatos(); // Aquí se hace la contada oficial una vez se guarda
     };
 </script>
 </body>
