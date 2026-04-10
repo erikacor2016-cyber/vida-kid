@@ -94,7 +94,7 @@
                     <th>#</th>
                     <th>Estado</th>
                     <th>Estudiante</th>
-                    <th>Fallas</th>
+                    <th>Asistencia</th>
                     <th>Biblia</th>
                     <th>Cuaderno</th>
                     <th>Ofrenda</th>
@@ -209,17 +209,54 @@
         document.getElementById('btnModoEdicion').innerText = "🔓 Editar Datos";
     };
 
-    window.actualizarSemaforo = (el) => {
-        const div = el.closest('tr').querySelector('.semaforo');
-        const v = parseInt(el.value) || 0;
-        div.classList.remove('warning', 'danger');
-        if(v === 3) div.classList.add('warning');
-        if(v >= 4) div.classList.add('danger');
-    };
+    window.actualizarSemaforo = async (fila, nombreEstudiante) => {
+    const div = fila.querySelector('.semaforo');
+    const fechaActual = new Date(document.getElementById('fechaClase').value);
+    let fallasSeguidas = 0;
+
+    // Vamos a revisar los últimos 4 domingos hacia atrás
+    for (let i = 1; i <= 4; i++) {
+        let fechaPasada = new Date(fechaActual);
+        fechaPasada.setDate(fechaActual.getDate() - (i * 7));
+        let fechaIso = fechaPasada.toISOString().split('T')[0];
+
+        const idClasePasada = `${jornada}_${clase}_${fechaIso}`;
+        const snap = await getDoc(doc(db, "maestras", idClasePasada));
+
+        if (snap.exists()) {
+            const datos = snap.data();
+            const registroNiño = datos.alumnos.find(a => a.nombre === nombreEstudiante);
+            
+            // Si el niño no está en la lista de ese domingo o sus puntos son todos 0, es una falla
+            const trajoPuntos = registroNiño && registroNiño.puntos.some(p => parseInt(p) > 0);
+            
+            if (!trajoPuntos) {
+                fallasSeguidas++;
+            } else {
+                // Si encontramos un domingo donde SÍ vino, dejamos de contar hacia atrás
+                break;
+            }
+        } else {
+            // Si no hay lista guardada ese domingo, asumimos que no hubo clase
+            continue; 
+        }
+    }
+
+    // APLICAR COLORES SEGÚN TUS REGLAS
+    div.classList.remove('warning', 'danger');
+    
+    if (fallasSeguidas === 3) {
+        div.classList.add('warning'); // AMARILLO: 3 fallas seguidas
+    } else if (fallasSeguidas >= 4) {
+        div.classList.add('danger'); // ROJO: 4 o más fallas
+        alert(`🚨 ATENCIÓN: ${nombreEstudiante} lleva ${fallasSeguidas} ausencias seguidas. Debes llamar al acudiente para conocer el motivo.`);
+    }
+    // Si fallasSeguidas es 0, 1 o 2, se queda en VERDE (por defecto)
+};
 
     window.agregarFila = (d = {}, esNuevo = false, num = "") => {
         const tabla = document.getElementById('tablaAlumnos');
-        let pts = d.puntos ? [...d.puntos] : [0,0,0,0,0,0,0];
+        let pts = d.puntos ? [...d.puntos] : [0,0,0,0,0,0,];
         const totalPuntos = pts.reduce((a, b) => parseInt(a || 0) + parseInt(b || 0), 0);
         
         // CORRECCIÓN: Numeración automática al añadir uno nuevo
