@@ -271,24 +271,36 @@
     "11:00 a 13:00_10 a 14 años": "Steven y Natalia"
 };
     let jornada = "", clase = "", modoEdicion = false;
-    const obtenerDomingoActualOAnterior = () => {
-        const hoy = new Date();
-        const diaSemana = hoy.getDay();
-        if (diaSemana !== 0) {
-            hoy.setDate(hoy.getDate() - diaSemana);
-        }
-        
-        const y = hoy.getFullYear();
-        const m = String(hoy.getMonth() + 1).padStart(2, '0');
-        const d = String(hoy.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
-    };
-    const fechaISO = obtenerDomingoActualOAnterior();
+    const obtenerFechaActual = () => {
+    const hoy = new Date();
+    const y = hoy.getFullYear();
+    const m = String(hoy.getMonth() + 1).padStart(2, '0');
+    const d = String(hoy.getDate()).padStart(2, '0');
+
+    return `${y}-${m}-${d}`;
+};
+
+const fechaISO = obtenerFechaActual();
     const inputFechaPrincipal = document.getElementById('fechaClase');
     if (inputFechaPrincipal) {
-        inputFechaPrincipal.value = fechaISO;
-        inputFechaPrincipal.disabled = true; 
+    inputFechaPrincipal.value = fechaISO;
     }
+    function sincronizarFecha() {
+    const input = document.getElementById("fechaClase");
+
+    if (!input) return;
+
+    const hoy = new Date();
+    const y = hoy.getFullYear();
+    const m = String(hoy.getMonth() + 1).padStart(2, '0');
+    const d = String(hoy.getDate()).padStart(2, '0');
+
+    input.value = `${y}-${m}-${d}`;
+}
+
+sincronizarFecha();
+
+setInterval(sincronizarFecha, 60000);
     window.nav = (o, m) => {
         document.getElementById(o).classList.add('hidden');
         document.getElementById(m).classList.remove('hidden');
@@ -332,56 +344,82 @@ window.cargarDatos = async () => {
     const fecha = document.getElementById('fechaClase').value;
     const otraJornada = (jornada === "8:00 a 10:00") ? "11:00 a 13:00" : "8:00 a 10:00";
     const soloEdad = clase.split('_')[1]; 
-    const idOtraJornadaHoy = `${otraJornada}_${soloEdad}_${fecha}`;
+    const idOtraJornadaBase = `${otraJornada}_${soloEdad}`;
+    const idHoyActual = `${idClase}_${fecha}`;     
+    const idHoyOtro = `${idOtraJornadaBase}_${fecha}`;
     try {
         const snapMaestra = await getDoc(doc(db, "maestras", idClase));
-        const snapOtra = await getDoc(doc(db, "maestras", idOtraJornadaHoy));
-        let yaAsistieronHoy = [];
-        if (snapOtra.exists()) {
-            yaAsistieronHoy = snapOtra.data().alumnos
-                .filter(a => a.puntos && a.puntos.some(p => parseInt(p) > 0))
-                .map(a => a.nombre.toLowerCase().trim());
-        }
-        const alumnos = snapMaestra.exists() ? snapMaestra.data().alumnos : [];
-        const tabla = document.getElementById('tablaAlumnos');
+        const snapOtraMaestra = await getDoc(doc(db, "maestras", idOtraJornadaBase));
+        const snapHoyActual = await getDoc(doc(db, "maestras", idHoyActual));
+        const snapHoyOtro = await getDoc(doc(db, "maestras", idHoyOtro));
+        const alumnosMaestra = snapMaestra.exists() ? snapMaestra.data().alumnos : [];
+        const alumnosOtraMaestra = snapOtraMaestra.exists() ? snapOtraMaestra.data().alumnos : [];
+        const alumnosHoyActual = snapHoyActual.exists() ? snapHoyActual.data().alumnos : [];
+        const alumnosHoyOtro = snapHoyOtro.exists() ? snapHoyOtro.data().alumnos : [];
+        const tabla = document.getElementById('cuerpoAlumnos') || document.getElementById('tablaAlumnos');
         tabla.innerHTML = "";
-        
-        if (alumnos.length === 0) {
+        if (alumnosMaestra.length === 0) {
             tabla.innerHTML = "<tr><td colspan='12'>No hay alumnos en esta lista maestra.</td></tr>";
         }
-        alumnos.forEach((a, i) => {
+        alumnosMaestra.forEach((a, i) => {
             const nombreLimpio = a.nombre ? a.nombre.toLowerCase().trim() : "";
-            const yaVino = yaAsistieronHoy.includes(nombreLimpio);
-            agregarFila(a, false, i + 1, yaVino);
+            const regOtroHistorial = alumnosOtraMaestra.find(al => al.nombre && al.nombre.toLowerCase().trim() === nombreLimpio);
+            const asistenciaBaseActual = parseInt(a.asistencia || 0);
+            const asistenciaBaseOtra = regOtroHistorial ? parseInt(regOtroHistorial.asistencia || 0) : 0;
+            let yaVinoHoy = false;
+            const vinoEnEsteCulto = alumnosHoyActual.find(
+                al => al.nombre && al.nombre.toLowerCase().trim() === nombreLimpio
+            );
+            const vinoEnOtroCulto = alumnosHoyOtro.find(
+                al => al.nombre && al.nombre.toLowerCase().trim() === nombreLimpio
+            );
+            const asistenciaHistorial = asistenciaBaseActual + asistenciaBaseOtra;
+            const asistenciaHoy =
+                parseInt(vinoEnEsteCulto?.asistencia || 0) +
+                parseInt(vinoEnOtroCulto?.asistencia || 0);
+            if (asistenciaHoy > asistenciaHistorial) {
+                yaVinoHoy = true;
+            }
+            let asistenciaTotalReal = asistenciaBaseActual + asistenciaBaseOtra;
+            const alumnoUnificado = { ...a, asistencia: asistenciaTotalReal };
+            agregarFila(alumnoUnificado, false, i + 1, yaVinoHoy);
+            if (yaVinoHoy) {
+                const filasCreadas = tabla.querySelectorAll('tr:not(.fila-extra)');
+                const ultimaFila = filasCreadas[filasCreadas.length - 1];
+                if (ultimaFila) {
+                    ultimaFila.classList.add("ya-asistio");
+                    const aviso = ultimaFila.querySelector(".estadoAsistencia");
+                    if (aviso) {
+                        aviso.innerHTML = "✅ Ya asistió a clases";
+                    }
+                }
+            }
         });
         setTimeout(async () => {
             if (window.actualizarTodosLosSemaforos) await window.actualizarTodosLosSemaforos();
-        }, 300); 
-        
+        }, 300);
         actualizarContador();
         if (window.verificarCumpleanos) window.verificarCumpleanos();
         if (window.generarListaSugerencias) window.generarListaSugerencias(); 
         
-        modoEdicion = false;
+        window.modoEdicion = false;
         document.getElementById('btnModoEdicion').innerText = "🔓 Editar Datos";
     } catch (e) {
         console.error("Error crítico al cargar:", e);
     }
-};  
+};
     let alertados = new Set();
 window.actualizarSemaforo = async (fila) => {
     try {
         const nombreInput = fila.querySelector('.nombre');
         const divSemaforo = fila.querySelector('.semaforo');
         if (!nombreInput || !divSemaforo) return;
-
         const nombre = (nombreInput.value || nombreInput.textContent).trim().toLowerCase();
         const fechaManual = document.getElementById('fechaClase')?.value;
         if (!nombre || !fechaManual) return;
         divSemaforo.classList.remove('warning', 'danger');
         const fechaBase = new Date(fechaManual + "T12:00:00");
         const FECHA_INICIO_SISTEMA = new Date("2026-05-03T00:00:00");
-
         const formatearFecha = (fecha) => {
             const y = fecha.getFullYear();
             const m = String(fecha.getMonth() + 1).padStart(2, '0');
@@ -399,15 +437,12 @@ window.actualizarSemaforo = async (fila) => {
             }
             const idDocClasePasada = `${clase}_${formatearFecha(fechaRevision)}`;
             const snapClasePasada = await getDoc(doc(db, "maestras", idDocClasePasada));
-            
             if (snapClasePasada.exists()) {
                 const datosClasePasada = snapClasePasada.data();
                 const alumnosEnClasePasada = datosClasePasada.alumnos || [];
-                
                 const registroEstudiante = alumnosEnClasePasada.find(a => 
                     a.nombre && a.nombre.toLowerCase().trim() === nombre
                 );
-
                 if (registroEstudiante) {
                     const asistenciaEnClasePasada = parseInt(registroEstudiante.asistencia) || 0;
                     if (asistenciaEnClasePasada < asistenciaUltimaRevisada) {
@@ -423,7 +458,6 @@ window.actualizarSemaforo = async (fila) => {
                 continue; 
             }
         }
-
         if (fallasSeguidas >= 4) { 
             divSemaforo.style.setProperty('background-color', '#f44336', 'important');
             enviarAlertaProfesor(nombre, fallasSeguidas);
@@ -432,7 +466,6 @@ window.actualizarSemaforo = async (fila) => {
         } else { 
             divSemaforo.style.setProperty('background-color', '#4CAF50', 'important');
         }
-
     } catch (error) {
         console.error("Error en el semáforo:", error);
     }
@@ -474,14 +507,12 @@ window.actualizarTodosLosSemaforos = async () => {
         if (snap.exists()) {
             const alumnos = snap.data().alumnos || [];
             const est = alumnos.find(a => a.nombre && a.nombre.toLowerCase().trim() === nombreBuscado);
-            
             if (est) {
                 const filaExtra = input.closest('tr').nextElementSibling;
                 filaExtra.querySelector('.cumple').value = est.cumple || "";
                 filaExtra.querySelector('.acudiente').value = est.acudiente || "";
                 filaExtra.querySelector('.tel').value = est.tel || "";
                 filaExtra.querySelector('.edad-valor').value = window.obtenerEdad(est.cumple);
-                
                 if (filaExtra.querySelector('.aut-foto')) {
     filaExtra.querySelector('.aut-foto').checked = est.autorizaciones?.fotos || false;
 }
@@ -531,13 +562,13 @@ window.agregarFila = (d = {}, esNuevo = false, num = "", yaVino = false) => {
     let pts = d.puntos ? [...d.puntos] : [0,0,0,0,0,0];
     const totalPuntos = pts.reduce((a, b) => parseInt(a || 0) + parseInt(b || 0), 0);
     const numeroActual = num || (esNuevo ? "?" : document.querySelectorAll('#tablaAlumnos tr:not(.fila-extra)').length + 1);
-    const isReadOnly = (esNuevo || modoEdicion) ? "" : "readonly";
-    const isDisabled = (esNuevo || modoEdicion) ? "" : "disabled";
-    const asistioDeVerdad = yaVino && (parseInt(d.asistencia) > 0);
-    const estiloFila = asistioDeVerdad ? 'style="background-color: #ffcccc;"' : '';
-    const avisoVino = asistioDeVerdad ? '<br><small style="color:red; font-weight:bold;">⚠️ YA ASISTIÓ HOY</small>' : '';
-    
+    const isReadOnly = (esNuevo || window.modoEdicion) ? "" : "readonly";
+    const isDisabled = (esNuevo || window.modoEdicion) ? "" : "disabled";
+    const estiloFila = yaVino ? 'style="background-color: #ffcccc;"' : '';
+    const avisoVino = yaVino ? '<br><small style="color:red; font-weight:bold;">⚠️ YA ASISTIÓ HOY</small>' : '';
+    const nombreLimpio = d.nombre ? d.nombre.toLowerCase().trim() : "";
     const f1 = document.createElement('tr');
+    f1.setAttribute("data-nombre", nombreLimpio);
     f1.innerHTML = `
         <td class="n-orden" ${estiloFila}>${numeroActual}</td>
         <td ${estiloFila} style="text-align:center;">
@@ -548,6 +579,10 @@ window.agregarFila = (d = {}, esNuevo = false, num = "", yaVino = false) => {
             <input type="text" class="nombre" list="listaEstudiantes" value="${d.nombre || ''}" 
             style="width:130px" ${isReadOnly} onblur="window.buscarPerfil(this)">
             ${avisoVino}
+            
+            <div class="estadoAsistencia" style="font-size:0.75rem; font-weight:bold; color:green; mt-1">
+                ${yaVino ? "✅ Ya asistió a clases" : ""}
+            </div>
         </td>
         <td ${estiloFila}><input type="number" class="asistencia-acumulada" value="${d.asistencia || 0}" style="width:35px" ${isReadOnly}></td>
         <td ${estiloFila}><input type="number" class="punto" value="${pts[0]||0}" onchange="window.calc(this)" style="width:35px" ${isReadOnly}></td>
@@ -558,11 +593,10 @@ window.agregarFila = (d = {}, esNuevo = false, num = "", yaVino = false) => {
         <td ${estiloFila}><input type="number" class="punto" value="${pts[5]||0}" onchange="window.calc(this)" style="width:35px" ${isReadOnly}></td>
         <td class="total-celda" ${estiloFila}>${totalPuntos}</td>
         <td ${estiloFila}>
-            <button class="btn-delete" style="color:red; background:none; border:none; font-size:1.2rem; cursor:pointer; ${esNuevo || modoEdicion ? 'display:inline-block' : 'display:none'}" 
+            <button class="btn-delete" style="color:red; background:none; border:none; font-size:1.2rem; cursor:pointer; ${(esNuevo || window.modoEdicion) ? 'display:inline-block' : 'display:none'}" 
                     onclick="window.eliminarFila('${numeroActual}')">✕</button>
         </td>
     `;
-    
     const f2 = document.createElement('tr');
     f2.className = "fila-extra";
     f2.innerHTML = `<td colspan="12"><div class="extra-grid">
@@ -619,21 +653,15 @@ window.guardar = async () => {
         const fPuntos = document.querySelectorAll('#tablaAlumnos tr:not(.fila-extra)');
         const fExtra = document.querySelectorAll('#tablaAlumnos .fila-extra');
         const obs = document.getElementById('txtObservaciones')?.value || "";
-
         const alumnosData = Array.from(fPuntos).map((r, i) => {
             const nombreInput = r.querySelector('.nombre');
             let nombreVal = nombreInput ? nombreInput.value.trim() : "";
-            
-            // CORRECCIÓN: Procesamos el nombre directamente sin llamar a funciones externas inexistentes
             if (nombreVal && nombreVal !== "Sin nombre") {
-                // Lo convierte a un formato estándar: espacios limpios y primera letra en mayúscula por palabra (o puedes dejarlo normal)
                 nombreVal = nombreVal.replace(/\s+/g, ' '); 
             }
-            
             if (!nombreVal || nombreVal === "Sin nombre") {
                 return null; 
             }
-            
             return {
                 nombre: nombreVal,
                 asistencia: parseInt(r.querySelector('.asistencia-acumulada')?.value) || 0,
@@ -650,7 +678,6 @@ window.guardar = async () => {
                 }
             };
         }).filter(alumno => alumno !== null); 
-
         await setDoc(doc(db, "maestras", idClase), { alumnos: alumnosData });
         await setDoc(doc(db, "maestras", `${idClase}_${fecha}`), { 
             alumnos: alumnosData,
